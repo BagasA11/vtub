@@ -1,5 +1,5 @@
 import { validate as isValidUuid, version as uuidVersion } from 'uuid';
-import { Video } from "./video.model.mjs";
+import { Video } from "./video.model.js";
 
 // deserialize
 // valid response plain object payload -> non error

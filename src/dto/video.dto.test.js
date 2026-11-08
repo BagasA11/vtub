@@ -1,4 +1,6 @@
-import { VideoCreateDto } from './video.dto.mjs';
+import { VideoCreateDto } from './video.dto.js';
+import { Video } from '../db/video.model.js';
+import { VideoValidationError } from '../errors/app.error.js';
 
 describe('VideoCreateDto.from', () => {
   test('membuat dto dari payload valid', () => {
@@ -71,5 +73,5 @@ const invalidPayloads = [
 ];
 
 test.each(invalidPayloads)('menolak payload tidak valid: %p', (payload) => {
-  expect(() => VideoCreateDto.from(payload)).toThrow(TypeError);
+  expect(() => VideoCreateDto.from(payload)).toThrow(VideoValidationError);
 });

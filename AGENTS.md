@@ -41,3 +41,6 @@ Aplikasi ini merupakan api pemutar video. Ketika menerima request upload, file v
 - javascript
 - test runner jest
 - linter eslint
+
+# Rules
+- Ketika diminta membuat scaffold, cukup buatkan scafforld (nama class atau fungsi) saja, begitu pula dengan pembuatan test case.
