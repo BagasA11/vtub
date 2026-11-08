@@ -1,0 +1,11 @@
+.env
+/.env 
+~/.env 
+
+./opencode.json
+opencode.json
+/opencode.json 
+~/opencode.json 
+
+/node_modules
+/coverage
