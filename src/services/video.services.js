@@ -1,7 +1,7 @@
 import { Video } from "../db/video.model.js";
 import { videoRepo } from "../db/video.repository.js";
 import { VideoCreateDto } from "../dto/video.dto.js";
-import { VideoValidationError } from "../errors/app.error.js";
+import { NotFoundError, VideoValidationError } from "../errors/app.error.js";
 
 export class VideoService {
     constructor(repo = videoRepo){
@@ -16,7 +16,7 @@ export class VideoService {
      * VideoValidationError agar konsisten di layer HTTP.
      *
      * @param {object} data
-     * @return {Video}
+     * @return {Video} instance
      * @throws {VideoValidationError} jika payload tidak valid
      */
     create(data) {
@@ -43,15 +43,36 @@ export class VideoService {
     }
     
     /**
-     * 
-     * @param {*} id
-     * @return {Video|null} jika tidak ditemukan
+     * Mengambil satu video berdasarkan id.
+     *
+     * @param {string} id
+     * @return {Video} instance
+     * @throws {NotFoundError} jika id tidak ditemukan
      */
-    findByID(id) {}
+    findByID(id) {
+        const video = this.repo.findById(id);
+
+        if (!video) {
+            throw new NotFoundError('Video tidak ditemukan');
+        }
+
+        return video;
+    }
     
     /**
-     * Menghapus instance berdasarkan id
-     * @param id   
+     * Menghapus instance berdasarkan id.
+     *
+     * @param {string} id
+     * @returns {Video} instance yang dihapus
+     * @throws {NotFoundError} jika id tidak ditemukan
      */
-    delete(id) {}
+    delete(id) {
+        const video = this.repo.deleteById(id);
+
+        if (!video) {
+            throw new NotFoundError('Video tidak ditemukan');
+        }
+
+        return video;
+    }
 }

@@ -27,6 +27,14 @@ export class VideoValidationError extends AppError {
   }
 }
 
+/**
+ * Error ketika data yang diminta tidak ditemukan.
+ */
 export class NotFoundError extends AppError {
-    
+  /**
+   * @param {string} [message]
+   */
+  constructor(message = 'Data tidak ditemukan') {
+    super(message, 404, 'NOT_FOUND');
+  }
 }
