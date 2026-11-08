@@ -1,3 +1,4 @@
+import { validate as isValidUuid, version as uuidVersion } from 'uuid';
 import { Video } from "./video.model.mjs";
 
 // deserialize
@@ -57,4 +58,60 @@ test('serialize', ()=>{
     };
     const video = Video.deserialize(input);
     expect(video.serialize()).toEqual(input);
+});
+
+// generateId
+test('generateId_mengembalikan_string', ()=>{
+    expect(typeof Video.generateId()).toBe('string');
+});
+
+test('generateId_mengembalikan_uuid_v4_yang_valid', ()=>{
+    const id = Video.generateId();
+
+    expect(isValidUuid(id)).toBe(true);
+    expect(uuidVersion(id)).toBe(4);
+});
+
+test('generateId_unik_setiap_pemanggilan', ()=>{
+    const ids = new Set(Array.from({ length: 100 }, () => Video.generateId()));
+
+    expect(ids.size).toBe(100);
+});
+
+// deserialize memanggil generateId
+test('deserialize_membuat_id_jika_tidak_diberikan', ()=>{
+    const video = Video.deserialize({
+        judul:'marsha and the bear',
+        mp4file:'eps_1.mp4'
+    });
+
+    expect(isValidUuid(video.id)).toBe(true);
+    expect(uuidVersion(video.id)).toBe(4);
+});
+
+test('deserialize_membuat_id_jika_string_kosong', ()=>{
+    const video = Video.deserialize({
+        id:'   ',
+        judul:'marsha and the bear',
+        mp4file:'eps_1.mp4'
+    });
+
+    expect(isValidUuid(video.id)).toBe(true);
+});
+
+test('deserialize_mempertahankan_id_yang_diberikan', ()=>{
+    const video = Video.deserialize({
+        id:'1234',
+        judul:'marsha and the bear',
+        mp4file:'eps_1.mp4'
+    });
+
+    expect(video.id).toBe('1234');
+});
+
+test('deserialize_menghasilkan_id_berbeda_untuk_setiap_pemanggilan', ()=>{
+    const first = Video.deserialize({ judul:'episode 1', mp4file:'eps_1.mp4' });
+    const second = Video.deserialize({ judul:'episode 2', mp4file:'eps_2.mp4' });
+
+    expect(first.id).not.toBe(second.id);
 });

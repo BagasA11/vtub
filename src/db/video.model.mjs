@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from 'uuid';
+
 /**
  * Model domain Video.
  *
@@ -10,7 +12,7 @@
 export class Video {
   /**
    * @param {object} props
-   * @param {string} props.id
+   * @param {string} [props.id] id dibuat otomatis jika tidak diberikan
    * @param {string} props.judul
    * @param {string|null} [props.thumbnail]
    * @param {string} props.mp4file
@@ -23,7 +25,19 @@ export class Video {
   }
 
   /**
+   * Membuat id unik untuk Video.
+   *
+   * @returns {string} UUID v4
+   */
+  static generateId() {
+    return uuidv4();
+  }
+
+  /**
    * Mengubah plain object atau string JSON menjadi instance Video.
+   *
+   * Field "id" opsional; jika tidak ada atau kosong, id dibuat dengan
+   * {@link Video.generateId}.
    *
    * @param {object|string} input
    * @returns {Video}
@@ -35,7 +49,7 @@ export class Video {
       throw new TypeError('Video.deserialize: input harus plain object atau string JSON');
     }
 
-    const requiredFields = ['id', 'judul', 'mp4file'];
+    const requiredFields = ['judul', 'mp4file'];
 
     for (const field of requiredFields) {
       const value = data[field];
@@ -47,6 +61,10 @@ export class Video {
       }
     }
 
+    if (data.id !== undefined && data.id !== null && typeof data.id !== 'string') {
+      throw new TypeError('Video.deserialize: field "id" harus berupa string');
+    }
+
     if (
       data.thumbnail !== undefined &&
       data.thumbnail !== null &&
@@ -55,8 +73,13 @@ export class Video {
       throw new TypeError('Video.deserialize: field "thumbnail" harus berupa string atau null');
     }
 
+    const id =
+      typeof data.id === 'string' && data.id.trim() !== ''
+        ? data.id
+        : Video.generateId();
+
     return new Video({
-      id: data.id,
+      id,
       judul: data.judul,
       thumbnail: data.thumbnail ?? null,
       mp4file: data.mp4file,
