@@ -21,9 +21,11 @@ export class AppError extends Error {
 export class VideoValidationError extends AppError {
   /**
    * @param {string} [message]
+   * @param {string|null} [errorField] nama field yang gagal divalidasi
    */
-  constructor(message = 'Data video tidak valid') {
+  constructor(message = 'Data video tidak valid', errorField = null) {
     super(message, 400, 'VALIDATION_ERROR');
+    this.errorField = errorField;
   }
 }
 

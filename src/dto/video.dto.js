@@ -1,5 +1,5 @@
-import { Video } from "../db/video.model";
-import { VideoValidationError } from "../errors/app.error";
+import { Video } from "../db/video.model.js";
+import { VideoValidationError } from "../errors/app.error.js";
 
 /**
  * DTO untuk request create video.
@@ -35,7 +35,10 @@ export class VideoCreateDto {
    */
   static from(input) {
     if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-      throw new VideoValidationError(message='VideoCreateDto.from: input harus plain object');
+      throw new VideoValidationError(
+        'VideoCreateDto.from: input harus plain object',
+        null,
+      );
     }
 
     for (const field of ['judul', 'mp4file']) {
@@ -43,8 +46,8 @@ export class VideoCreateDto {
 
       if (typeof value !== 'string' || value.trim() === '') {
         throw new VideoValidationError(
-          message=`VideoCreateDto.from: field "${field}" wajib berupa string tidak kosong`,
-          errorField=field
+          `VideoCreateDto.from: field "${field}" wajib berupa string tidak kosong`,
+          field,
         );
       }
     }
@@ -55,7 +58,8 @@ export class VideoCreateDto {
       typeof input.thumbnail !== 'string'
     ) {
       throw new VideoValidationError(
-        'VideoCreateDto.from: field "thumbnail" harus berupa string atau null'
+        'VideoCreateDto.from: field "thumbnail" harus berupa string atau null',
+        'thumbnail',
       );
     }
 
@@ -65,6 +69,13 @@ export class VideoCreateDto {
       mp4file: input.mp4file,
     });
   }
-  
-
 }
+
+
+export const VideoCreateResponseDto = (status, message, data) => {
+  return {
+    status:status,
+    message:message,
+    data:data
+  };
+};

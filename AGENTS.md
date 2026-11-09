@@ -34,7 +34,8 @@ Aplikasi ini merupakan api pemutar video. Ketika menerima request upload, file v
 - `/src/db` Skema Database (sementara menggunakan variabel dulu)
 - `/src/dto` struktur request dan respon (jika perlu)
 - `/src/**/*.test.js` unit test, diletakkan di samping kode yang diuji; Jest hanya memindai `/src`
-- `/files` menampung file video
+- `/files/thumbnail` menampung file thumbnail
+- `/files/video` menampung file video
 
 ## Stacks
 - express js
@@ -43,4 +44,6 @@ Aplikasi ini merupakan api pemutar video. Ketika menerima request upload, file v
 - linter eslint
 
 # Rules
+- anda dapat bertanya jika ragu
 - Ketika diminta membuat scaffold, cukup buatkan scafforld (nama class atau fungsi) saja, begitu pula dengan pembuatan test case.
+- Handler dan Controler secara default merupakan istilah yang sama, kecuali jika saya mendefinisikan secara eksplisit. Anda boleh bertanya, konfirmasi, bahkan meluruskan, ketika saya mendefinisikan hal tersebut.
