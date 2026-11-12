@@ -62,7 +62,6 @@ describe('find by id', ()=>{
         const payload = createPayload();
         const video = svc.create(payload);
         const data = svc.findByID(video.id);
-        
         expect(data.serialize()).toMatchObject(payload);
     });
 });
