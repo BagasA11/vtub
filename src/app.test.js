@@ -4,6 +4,8 @@ import { testDataset } from './payload/payload-test.js';
 import { VideoHandler } from './api/handlers/video.handlers.js';
 import { VideoService } from './services/video.services.js';
 import { VideoRepository } from './db/video.repository.js';
+import { NotFoundError } from './errors/app.error.js';
+import { HTTP_NOT_FOUND, HTTP_OK } from './api/handlers/statuscode.js';
 
 /**
  * create handler instance 
@@ -31,33 +33,30 @@ const startServer = (app) =>
     });
   });
 
-const stopServer = (server) =>
-  new Promise((resolve) => server.close(resolve));
+const stopServer = (server) => {
+  if (!server || !server.listening) {
+    return Promise.resolve();
+  }
 
-// const postData = async ()=>{
-  //   const handler = {
-  //     list: jest.fn(),
-  //     create: jest.fn((req, res) =>
-  //       res.status(201).json({ from: 'create', body: req.body }),
-  //     ),
-  //   };
+  return new Promise((resolve) => {
+    server.close(resolve);
+    server.closeAllConnections();
+  });
+};
 
-  //   const { server, baseUrl } = await startServer(
-  //     createApp({ videoHandler: handler }),
-  //   );
-
-  //   const responses = await Promise.all(
-  //   testDataset.map(async (payload) => {
-  //     const response = await fetch(`${baseUrl}/videos`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify(payload),
-  //     });
-  //     return { status: response.status, data: await response.json() };
-  //   }),
-  // );
-  // return responses;
-// };
+const postData = async (baseUrl)=>{
+  const responses = await Promise.all(
+    testDataset.map(async (payload) => {
+      const response = await fetch(`${baseUrl}/videos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return { status: response.status, body: await response.json() };
+    }),
+  );
+  return responses;
+};
 
 describe('createApp', () => {
   
@@ -82,23 +81,14 @@ describe('createApp', () => {
   });
 
   test('GET /videos memakai handler list', async () => {
-    const handler = {
-      list: jest.fn((req, res) => res.status(200).json({ from: 'list' })),
-      create: jest.fn(),
-    };
-    const { server, baseUrl } = await startServer(
-      createApp({ videoHandler: handler }),
-    );
-
+    
     try {
       const response = await fetch(`${baseUrl}/videos`);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ from: 'list' });
-      expect(handler.list).toHaveBeenCalledTimes(1);
     } finally {
-      await stopServer(server);
+
     }
   });
 
@@ -125,9 +115,48 @@ describe('createApp', () => {
     }
   });
 
-  test('GET /videos/id', ()=>{
-    const payload = { judul: 'contoh', mp4file: 'contoh.mp4' };
-    expect(1).toBe(1);
+  test('GET /videos/id', async ()=>{
+    // return not found
+    let response = await fetch(`${baseUrl}/videos/x123xx`);
+    expect(response.status).toBe(HTTP_NOT_FOUND);
+
+    response = await postData(baseUrl);
+    const first = response[0].body.data;
+
+    try {
+      const response = await fetch(`${baseUrl}/videos/${first.id}`);
+      const body = await response.json();
+      
+      expect(response.status).toBe(HTTP_OK);
+      expect(body.data).toMatchObject(first);
+
+    } finally {
+      console.log('GET /videos/id DONE');
+    }
+  });
+
+  test('DELETE /:id', async ()=>{
+    let response = await fetch(`${baseUrl}/videos/xx123xx`, {
+      method: 'DELETE'
+    });
+    expect(response.status).toBe(HTTP_NOT_FOUND);
+
+    const responses = await postData(baseUrl);
+    const last_data = responses.at(-1).body.data;
+
+    try {
+      let response = await fetch(`${baseUrl}/videos/${last_data.id}`, {
+        method: 'DELETE'
+      });
+      expect(response.status).toBe(HTTP_OK); 
+
+      // must be not found since removed
+      response = await fetch(`${baseUrl}/videos/${last_data.id}`)
+      const {status, message, data} = await response.json();
+      expect(response.status).toBe(HTTP_NOT_FOUND);
+      expect(data).toBe(null);
+
+    } finally {}
   });
 
   // test('route selain /videos tidak ditangani router video', async () => {

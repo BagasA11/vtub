@@ -13,7 +13,7 @@ export const createVideoRouter = (handler = createHandler) => {
   router.get('/', handler.list);
   router.post('/', handler.create);
   router.get('/:videoId', handler.findByID);
-  router.get('/:videoId', handler.delete);
+  router.delete('/:videoId', handler.delete);
 
   return router;
 };

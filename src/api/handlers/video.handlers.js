@@ -1,13 +1,12 @@
 // import { VideoService } from "../../services/video.services.js";
 import { service } from "../../services/video.services.js";
-import { NotFoundError } from "../../errors/app.error.js";
-import { VideoValidationError } from "../../errors/app.error.js";
-import { VideoCreateDto, VideoCreateResponseDto } from "../../dto/video.dto.js";
+import { NotFoundError, VideoValidationError } from "../../errors/app.error.js";
+import { VideoCreateResponseDto } from "../../dto/video.dto.js";
 import {
     HTTP_BAD_REQUEST,
     HTTP_CREATED,
     HTTP_INTERNAL_SERVER_ERROR,
-    HTTP_NO_CONTENT,
+    HTTP_NOT_FOUND,
     HTTP_OK,
 } from "./statuscode.js";
 
@@ -17,7 +16,7 @@ export class VideoHandler {
     }
     
     index = (req, res) => {
-        return res.status(200);
+        return res.sendStatus(200);
     }
 
     /**
@@ -71,12 +70,72 @@ export class VideoHandler {
         ));
     };
 
+    /**
+     * handler detail video
+     * @returns {object} video dalam envelope data | not found | internal server error
+     */
     findByID = async (req, res) => {
-        return res.status(HTTP_NO_CONTENT);
+        try {
+            const video = this.service.findByID(req.params.videoId);
+
+            return res
+                .status(HTTP_OK)
+                .json(VideoCreateResponseDto(HTTP_OK, 'success', video));
+        } catch (error) {
+            if (error instanceof NotFoundError) {
+                return res
+                    .status(HTTP_NOT_FOUND)
+                    .json(VideoCreateResponseDto(
+                        HTTP_NOT_FOUND,
+                        error.message,
+                        null,
+                    ));
+            }
+
+            return res
+                .status(HTTP_INTERNAL_SERVER_ERROR)
+                .json(VideoCreateResponseDto(
+                    HTTP_INTERNAL_SERVER_ERROR,
+                    'Terjadi kesalahan pada server',
+                    null,
+                ));
+        }
     };
 
+    /**
+     * handler hapus video
+     * @returns {object} video yang dihapus dalam envelope data | not found | internal server error
+     */
     delete = async (req, res) => {
-        return res.status(HTTP_NO_CONTENT);
+        try {
+            const video = this.service.delete(req.params.videoId);
+
+            return res
+                .status(HTTP_OK)
+                .json(VideoCreateResponseDto(
+                    HTTP_OK,
+                    'Video berhasil dihapus',
+                    video,
+                ));
+        } catch (error) {
+            if (error instanceof NotFoundError) {
+                return res
+                    .status(HTTP_NOT_FOUND)
+                    .json(VideoCreateResponseDto(
+                        HTTP_NOT_FOUND,
+                        error.message,
+                        null,
+                    ));
+            }
+
+            return res
+                .status(HTTP_INTERNAL_SERVER_ERROR)
+                .json(VideoCreateResponseDto(
+                    HTTP_INTERNAL_SERVER_ERROR,
+                    'Terjadi kesalahan pada server',
+                    null,
+                ));
+        }
     };
 }
 
