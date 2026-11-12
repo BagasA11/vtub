@@ -1,4 +1,5 @@
-import { VideoService } from "../../services/video.services.js";
+// import { VideoService } from "../../services/video.services.js";
+import { service } from "../../services/video.services.js";
 import { NotFoundError } from "../../errors/app.error.js";
 import { VideoValidationError } from "../../errors/app.error.js";
 import { VideoCreateDto, VideoCreateResponseDto } from "../../dto/video.dto.js";
@@ -6,11 +7,12 @@ import {
     HTTP_BAD_REQUEST,
     HTTP_CREATED,
     HTTP_INTERNAL_SERVER_ERROR,
+    HTTP_NO_CONTENT,
     HTTP_OK,
 } from "./statuscode.js";
 
 export class VideoHandler {
-    constructor(svc = new VideoService()) {
+    constructor(svc = service) {
         this.service = svc;
     }
     
@@ -68,4 +70,14 @@ export class VideoHandler {
             HTTP_OK, "success", data
         ));
     };
+
+    findByID = async (req, res) => {
+        return res.status(HTTP_NO_CONTENT);
+    };
+
+    delete = async (req, res) => {
+        return res.status(HTTP_NO_CONTENT);
+    };
 }
+
+export const createHandler = new VideoHandler();

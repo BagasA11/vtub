@@ -76,3 +76,5 @@ export class VideoService {
         return video;
     }
 }
+
+export const service = new VideoService();

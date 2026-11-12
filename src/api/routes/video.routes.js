@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { VideoHandler } from '../handlers/video.handlers.js';
+import { createHandler } from '../handlers/video.handlers.js';
 
 /**
  * Membuat router untuk resource video.
@@ -7,11 +7,13 @@ import { VideoHandler } from '../handlers/video.handlers.js';
  * @param {VideoHandler} handler
  * @returns {import('express').Router}
  */
-export const createVideoRouter = (handler = new VideoHandler()) => {
+export const createVideoRouter = (handler = createHandler) => {
   const router = Router();
 
   router.get('/', handler.list);
   router.post('/', handler.create);
+  router.get('/:videoId', handler.findByID);
+  router.get('/:videoId', handler.delete);
 
   return router;
 };
