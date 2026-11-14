@@ -1,0 +1,281 @@
+================================================================================
+ALUR KOMUNIKASI FRONTEND - BACKEND
+UPLOAD VIDEO & PEMUTARAN MULTIMEDIA
+================================================================================
+
+Keputusan desain:
+- Upload dua tahap: upload file dulu, lalu simpan metadata (JSON).
+- File media disajikan dengan express.static.
+- Batas ukuran video: 500 MB (thumbnail 5 MB).
+- Frontend: vanilla JS.
+
+Tiga jalur komunikasi:
+
+  1. Upload file       -> multipart/form-data, streaming ke disk
+  2. Metadata video    -> JSON kecil
+  3. Media playback    -> binary + HTTP Range (express.static)
+
+Kunci desain: file tidak pernah masuk ke body JSON. Nama file selalu
+ditentukan server (UUID), nama asli dari user diabaikan.
+
+
+================================================================================
+1. KONTRAK API
+================================================================================
+
+--- Tahap 1: upload file (dipisah per jenis) -----------------------------------
+
+POST /uploads/videos
+Content-Type: multipart/form-data
+field: video=<file>
+
+201 {
+  "status": 201,
+  "message": "Upload berhasil",
+  "data": {
+    "uploadId": "uuid",
+    "url": "/media/videos/uuid.mp4",
+    "mime": "video/mp4",
+    "size": 52428800
+  }
+}
+
+POST /uploads/thumbnails
+Content-Type: multipart/form-data
+field: thumbnail=<file>
+
+201 {
+  "data": {
+    "uploadId": "uuid",
+    "url": "/media/thumbnails/uuid.jpg",
+    "mime": "image/jpeg",
+    "size": 512000
+  }
+}
+
+DELETE /uploads/:uploadId
+  Dipakai saat user membatalkan atau mengganti file sebelum submit.
+
+--- Tahap 2: simpan metadata (JSON, kecil) -------------------------------------
+
+POST /videos
+Content-Type: application/json
+
+{
+  "judul": "Judul video",
+  "videoUploadId": "uuid",
+  "thumbnailUploadId": "uuid"
+}
+
+201 {
+  "status": 201,
+  "message": "Video berhasil dibuat",
+  "data": {
+    "id": "uuid",
+    "judul": "Judul video",
+    "thumbnail": "/media/thumbnails/uuid.jpg",
+    "mp4file": "uuid.mp4",
+    "streamUrl": "/media/videos/uuid.mp4"
+  }
+}
+
+Catatan:
+- thumbnailUploadId opsional.
+- streamUrl dan thumbnail DIHITUNG SERVER dari nama file, bukan dari client.
+- Field mp4file / thumbnail di body JSON harus ditolak atau diabaikan.
+  (Kode lama menerima field ini dari client sehingga metadata bisa tidak
+  sinkron dengan file fisik.)
+
+--- Playback -------------------------------------------------------------------
+
+GET /media/videos/uuid.mp4      -> 200 / 206 (Range) / 416
+GET /media/thumbnails/uuid.jpg  -> 200
+
+express.static menangani Range, HEAD, ETag, 304, dan penolakan path traversal.
+Nama file UUID + Cache-Control: public, max-age=31536000, immutable aman
+karena isi file tidak pernah berubah.
+
+
+================================================================================
+2. ALUR USER -> FRONTEND -> BACKEND
+================================================================================
+
+  1. User membuka halaman /upload.
+
+  2. User memilih file video.
+     Frontend langsung POST /uploads/videos memakai XMLHttpRequest
+     (fetch tidak mendukung upload progress) untuk progress bar.
+
+     Backend:
+       - stream ke files/tmp/<uuid> (jangan buffer di RAM)
+       - validasi ukuran, MIME, dan magic bytes
+       - rename ke files/video/<uuid>.mp4 (satu volume agar atomik)
+       - catat entry di registry upload (status: pending)
+     Respons: 201 { uploadId }
+
+  3. User memilih thumbnail (opsional) -> POST /uploads/thumbnails,
+     alur sama, hasil di files/thumbnail/<uuid>.<ext>.
+
+  4. User mengisi judul.
+     Tombol Submit aktif hanya jika videoUploadId ada dan judul valid.
+
+  5. Submit form -> POST /videos { judul, videoUploadId, thumbnailUploadId }.
+
+     Backend:
+       - cek upload ada, kind cocok (video != thumbnail), status pending
+       - buat Video: id baru, mp4file/thumbnail diambil dari upload
+       - simpan metadata ke repository
+       - tandai upload sebagai consumed
+     Respons: 201 { id, streamUrl, thumbnail }
+
+  6. Frontend redirect ke /watch/:id -> GET /videos/:id -> render:
+
+       <video controls preload="metadata"
+              poster="/media/thumbnails/uuid.jpg"
+              src="/media/videos/uuid.mp4"></video>
+
+  7. Browser mengirim GET dengan header Range (mis. bytes=0-).
+     express.static membalas 206 Partial Content + Accept-Ranges: bytes +
+     Content-Range. Saat user seek, browser meminta range lain.
+     Range di luar file -> 416 + Content-Range: bytes */total.
+     Tanpa header Range -> 200 full body.
+
+Frontend vanilla: mulai upload SAAT FILE DIPILIH (bukan saat submit).
+Simpan uploadId, sediakan tombol batal yang memanggil DELETE /uploads/:id
+dan xhr.abort(). Submit hanya mengirim JSON karena file sudah tidak ikut.
+
+
+================================================================================
+3. DUA HAL YANG WAJIB DITANGANI PADA DESAIN DUA TAHAP
+================================================================================
+
+1. File yatim (orphan)
+   User bisa upload lalu menutup tab.
+   - Registry upload punya status: pending | consumed dan createdAt.
+   - Sweeper menghapus upload pending yang lebih tua dari TTL (mis. 24 jam)
+     beserta filenya.
+   - Sweeper dipanggil lazy setiap ada upload baru, BUKAN setInterval di
+     createApp, supaya test tidak menggantung.
+   - DELETE /videos/:id juga harus menghapus file video + thumbnail,
+     bukan hanya metadata.
+
+2. Atomisitas
+   Urutan POST /videos:
+     validasi upload -> simpan metadata -> baru tandai consumed
+   Jika simpan metadata gagal, upload tetap pending sehingga bisa dipakai
+   ulang atau dibersihkan sweeper. Jangan menandai consumed lebih dulu.
+
+
+================================================================================
+4. RENCANA IMPLEMENTASI (TDD)
+================================================================================
+
+Langkah 1
+  File   : src/db/upload.model.js, src/db/upload.repository.js
+  Isi    : Model Upload (id, kind, filename, mime, size, createdAt, status)
+           + Map in-memory, method findById, save, deleteById,
+           findExpired, clear.
+
+Langkah 2
+  File   : src/services/storage.service.js
+  Isi    : saveTemp, finalize (validasi + rename), remove, sweep.
+           Batas ukuran & MIME dari config/env agar test bisa memakai
+           limit kecil.
+
+Langkah 3
+  File   : src/services/upload.services.js
+  Isi    : create, findById, consume(id, kind), remove, sweepExpired.
+
+Langkah 4
+  File   : src/dto/upload.dto.js
+  Isi    : UploadResponseDto.
+
+Langkah 5
+  File   : src/api/handlers/upload.handlers.js
+           src/api/routes/upload.routes.js
+  Isi    : POST /uploads/videos, POST /uploads/thumbnails, DELETE /uploads/:id.
+
+Langkah 6
+  File   : src/app.js
+  Isi    : mount /uploads; express.static untuk /media/videos dan
+           /media/thumbnails; set header cache.
+
+Langkah 7
+  File   : src/dto/video.dto.js
+  Isi    : VideoCreateDto hanya menerima judul, videoUploadId,
+           thumbnailUploadId.
+
+Langkah 8
+  File   : src/services/video.services.js
+  Isi    : resolve upload, validasi kind & status, buat Video dengan nama
+           file dari server, hapus file saat delete.
+
+Langkah 9
+  File   : src/errors/app.error.js
+  Isi    : PayloadTooLargeError, UnsupportedMediaTypeError,
+           UploadNotFoundError.
+
+Langkah 10
+  File   : test (di samping kode yang diuji)
+
+Dependency baru: multer (disk storage + limits.fileSize), atau busboy bila
+ingin kontrol penuh. Untuk 500 MB keduanya streaming ke disk, bukan ke RAM.
+
+
+================================================================================
+5. TEST YANG DITULIS LEBIH DULU
+================================================================================
+
+- Upload valid -> 201, file ada di files/video, registry terisi.
+- MIME salah / magic bytes salah -> 415 dan file dihapus.
+- Melebihi limit (pakai limit kecil di test) -> 413 dan file dihapus.
+- Upload dibatalkan (request aborted) -> file tmp dihapus.
+- POST /videos dengan videoUploadId tidak dikenal -> 400/404.
+- UploadId thumbnail dipakai sebagai video -> 400.
+- Upload yang sudah consumed dipakai lagi -> 400.
+- Sukses -> metadata berisi mp4file & thumbnail hasil server.
+- GET /media/videos/<file> -> 200 + Accept-Ranges.
+- GET dengan Range: bytes=0-99 -> 206 + Content-Range.
+- Range tidak valid -> 416.
+- DELETE /videos/:id -> file video & thumbnail terhapus.
+- Sweeper menghapus upload pending yang kedaluwarsa.
+
+
+================================================================================
+6. DETAIL YANG MUDAH TERLEWAT
+================================================================================
+
+Upload:
+- Jangan buffer di RAM. Stream multipart langsung ke disk.
+- Batas eksplisit: files: 2, fieldSize untuk judul, judul <= 100 karakter.
+- Validasi berlapis: whitelist MIME (video/mp4, image/jpeg, image/png,
+  image/webp) + magic bytes + ekstensi final ditentukan server.
+- Simpan path relatif (video/<uuid>.mp4), bukan path absolut.
+- Disable tombol submit selama upload untuk mencegah duplikat.
+- Tangani disk penuh / kuota dan pastikan file tmp ikut terhapus.
+
+Playback:
+- moov atom harus di depan file (faststart), jika tidak video besar lambat
+  mulai diputar. Opsional:
+    ffmpeg -i input.mp4 -c copy -movflags +faststart output.mp4
+  Remux tanpa re-encode: cepat dan kualitas tidak turun.
+- Content-Type harus benar (video/mp4), kirim Accept-Ranges: bytes.
+- preload="metadata" + poster agar halaman watch ringan.
+- Kalau frontend beda origin: perlu CORS dan
+  Access-Control-Expose-Headers: Content-Range, Accept-Ranges.
+
+
+================================================================================
+7. RISIKO (BUKAN BLOCKER MVP)
+================================================================================
+
+- Belum ada auth: siapa pun yang tahu uploadId bisa memakainya. UUID acak
+  cukup untuk MVP, nanti perlu ownerId.
+- express.static menyajikan semua file di folder, termasuk orphan sampai
+  sweeper berjalan. Nama UUID membuatnya sulit ditebak.
+- moov atom belum di-faststart-kan. Opsional: status processing + ffmpeg
+  setelah upload.
+- Status HTTP yang dipakai:
+    201 Created, 400 Bad Request, 404 Not Found, 413 Payload Too Large,
+    415 Unsupported Media Type, 416 Range Not Satisfiable,
+    500 Internal Server Error.
