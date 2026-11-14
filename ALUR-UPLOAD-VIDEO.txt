@@ -150,6 +150,7 @@ dan xhr.abort(). Submit hanya mengirim JSON karena file sudah tidak ikut.
 ================================================================================
 
 1. File yatim (orphan)
+  definisi: file yang berada di disk namun tidak terhubung dengan metadata video.
    User bisa upload lalu menutup tab.
    - Registry upload punya status: pending | consumed dan createdAt.
    - Sweeper menghapus upload pending yang lebih tua dari TTL (mis. 24 jam)
