@@ -48,7 +48,7 @@ export class UploadRepository {
      * return list Array of upload instance
      */
     findExpired(now = Math.floor(Date.now() / 1000)) {
-        const ttlMillis = this.ttl2Millis();
+        const ttlMillis = ttl2Millis(this.ttl);
 
         return Array.from(this.#store.values())
             .filter((data) => data.status === 'PENDING'
@@ -109,15 +109,18 @@ export class UploadRepository {
         this.#store.clear();
     }
 
-    /**
-     * @returns {number} TTL dalam milidetik
-     */
-    ttl2Millis() {
-        const { hours = 0, minutes = 0, seconds = 0 } = this.ttl;
-        return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+    getTTL() {
+        return this.ttl;
     }
-
 }
 
 // production/development: 1 hari
 export const uploadRepo = new UploadRepository(ttlDuration(24));
+
+/**
+ * @returns {number} TTL dalam milidetik
+ */
+export const ttl2Millis = (ttl) => {
+    const { hours = 0, minutes = 0, seconds = 0 } = ttl;
+    return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+}
