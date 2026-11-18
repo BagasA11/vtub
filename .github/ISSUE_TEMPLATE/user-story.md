@@ -1,0 +1,48 @@
+---
+name: user-story
+about: template for creating user-story based feature
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+---
+name: User story
+about: feature user story
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+---
+name: user story
+about: user story template
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+---
+name: user-story
+about: user story template
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**As a** [role]  
+**I need** [function]  
+**So that** [benefit]  
+      
+### Details and Assumptions
+    * [document what you know]      
+### Acceptance Criteria     
+```gherkin 
+    Given [some context]
+    When [certain action is taken]
+    Then [the outcome of action is observed]
+ ```
